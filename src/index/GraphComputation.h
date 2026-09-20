@@ -13,6 +13,7 @@
 #include <vector>
 
 #include "backports/algorithm.h"
+#include "engine/idTable/IdColumn.h"
 #include "engine/idTable/IdTable.h"
 #include "global/Constants.h"
 #include "global/Id.h"
@@ -27,7 +28,7 @@
 CPP_template(typename T)(requires ql::ranges::range<T>&& ql::concepts::same_as<
                          ql::ranges::range_value_t<T>, Id>)
     std::optional<std::vector<Id>> computeDistinctGraphs(
-        T&& idRange, ql::span<const Id> preexistingGraphs = {}) {
+        T&& idRange, ConstIdColumn preexistingGraphs = {}) {
   AD_CORRECTNESS_CHECK(preexistingGraphs.size() <=
                        MAX_NUM_GRAPHS_STORED_IN_BLOCK_METADATA);
   size_t foundGraphs = preexistingGraphs.size();

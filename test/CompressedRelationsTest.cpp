@@ -9,6 +9,7 @@
 
 #include "./util/GTestHelpers.h"
 #include "./util/IdTableHelpers.h"
+#include "engine/idTable/IdColumn.h"
 #include "global/Constants.h"
 #include "index/CompressedRelation.h"
 #include "index/CompressedRelationHelpersImpl.h"
@@ -173,7 +174,7 @@ cppcoro::generator<IdTableStatic<0>> makeInputBlocks(
       AD_CORRECTNESS_CHECK(arr.size() + 1 == numColumns);
       rowBuffer[0] = V(input.col0_);
       ql::ranges::transform(arr, rowBuffer.begin() + 1, V);
-      buffer.push_back(ql::span<const Id>{rowBuffer}.subspan(0, numColumns));
+      buffer.push_back(ConstIdColumn{rowBuffer}.subspan(0, numColumns));
       if (buffer.numRows() > inputBlockSize) {
         co_yield buffer;
         buffer.clear();

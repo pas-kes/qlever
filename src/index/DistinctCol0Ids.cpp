@@ -15,6 +15,7 @@
 #include <utility>
 
 #include "backports/algorithm.h"
+#include "engine/idTable/IdColumn.h"
 #include "util/Exception.h"
 
 namespace distinctCol0Ids {
@@ -206,7 +207,7 @@ void IdCursor::consumeId(Id id, GraphSet& graphs) {
 RequestedIdsCursor::RequestedIdsCursor(
     const std::optional<std::vector<Id>>& ids)
     : remainingIds_{ids.has_value()
-                        ? std::optional{ql::span<const Id>{ids.value()}}
+                        ? std::optional{ConstIdColumn{ids.value()}}
                         : std::nullopt} {}
 
 // _____________________________________________________________________________

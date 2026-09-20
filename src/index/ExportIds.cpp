@@ -16,6 +16,7 @@
 #include <absl/strings/str_format.h>
 
 #include "backports/StartsWithAndEndsWith.h"
+#include "engine/idTable/IdColumn.h"
 #include "global/Constants.h"
 #include "index/vocabulary/EncodedIriManager.h"
 #include "util/Exception.h"
@@ -292,7 +293,7 @@ LiteralOrIri encodedIdToLiteralOrIri(Id id, const IndexImpl& index) {
 }
 
 // _____________________________________________________________________________
-PartitionedIdPositions partitionIdPositions(ql::span<const Id> ids) {
+PartitionedIdPositions partitionIdPositions(ConstIdColumn ids) {
   PartitionedIdPositions positions;
   positions.vocabIndexIndices_.reserve(ids.size());
   positions.nonVocabIndexIndices_.reserve(ids.size());

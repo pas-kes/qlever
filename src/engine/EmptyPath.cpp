@@ -16,6 +16,7 @@
 #include <array>
 #include <utility>
 
+#include "engine/idTable/IdColumn.h"
 #include "index/CompressedRelation.h"
 #include "index/IndexImpl.h"
 #include "index/TripleComponentConversions.h"
@@ -50,8 +51,8 @@ EntityAndGraph entityAndGraph(const Row& row, size_t numColumns) {
 // the graphs, such that the caller can treat both cases uniformly: The result
 // is a single undefined ID if `id` occurs in `matches` at all, and empty
 // otherwise.
-ql::span<const Id> graphsOf(const IdTable& matches, Id id) {
-  ql::span<const Id> ids = matches.getColumn(0);
+ConstIdColumn graphsOf(const IdTable& matches, Id id) {
+  ConstIdColumn ids = matches.getColumn(0);
   auto matching = ql::ranges::equal_range(ids, id);
   size_t numMatches = ql::ranges::size(matching);
   if (matches.numColumns() == 1) {
@@ -328,7 +329,7 @@ cppcoro::generator<IdTable> EmptyPath::scanIndex(
   // never the bottleneck: either the `idFilter` makes the result tiny, or the
   // whole knowledge graph is scanned and decompressing its blocks dominates.
   for (const EntityAndGraph& row : merged) {
-    result.push_back(ql::span<const Id>{row.data(), numKgColumns()});
+    result.push_back(ConstIdColumn{row.data(), numKgColumns()});
     if (result.numRows() >= chunkSize_) {
       checkCancellation();
       co_yield std::move(result);
@@ -399,7 +400,7 @@ Result::Generator EmptyPath::processUndefRows(const IdTableView<0>& input,
         "them have to be read and combined with each of the affected rows, "
         "which can be very slow.");
   }
-  ql::span<const Id> joinColumn =
+  ConstIdColumn joinColumn =
       input.getColumn(checkedChild_.value().joinColumn_);
   std::vector<size_t> undefRows;
   ql::ranges::copy_if(
@@ -431,7 +432,7 @@ Result::Generator EmptyPath::processUndefRows(const IdTableView<0>& input,
 Result::Generator EmptyPath::processTable(IdTableView<0> table,
                                           const LocalVocab& localVocab,
                                           bool& hasWarnedAboutUndef) const {
-  ql::span<const Id> joinColumn =
+  ConstIdColumn joinColumn =
       table.getColumn(checkedChild_.value().joinColumn_);
   // The distinct values of the join column that have to be looked up.
   std::vector<Id> ids;

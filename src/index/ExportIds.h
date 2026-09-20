@@ -21,6 +21,7 @@
 
 #include "backports/StartsWithAndEndsWith.h"
 #include "backports/span.h"
+#include "engine/idTable/IdColumn.h"
 #include "global/Constants.h"
 #include "global/Id.h"
 #include "index/Index.h"
@@ -241,7 +242,7 @@ struct PartitionedIdPositions {
 
 // Partition the positions `0 ... ids.size()-1` by whether `ids[i]` is a
 // `VocabIndex`.
-PartitionedIdPositions partitionIdPositions(ql::span<const Id> ids);
+PartitionedIdPositions partitionIdPositions(ConstIdColumn ids);
 
 // Resolve the IDs at `positions` (all non-`VocabIndex`) immediately via
 // in-memory `idToStringAndType`, writing each result into its slot in
@@ -250,7 +251,7 @@ PartitionedIdPositions partitionIdPositions(ql::span<const Id> ids);
 template <bool removeQuotesAndAngleBrackets, bool returnOnlyLiterals,
           typename EscapeFunction>
 void resolveNonVocabIndexIds(
-    const Index& index, ql::span<const Id> ids, const LocalVocab& localVocab,
+    const Index& index, ConstIdColumn ids, const LocalVocab& localVocab,
     ql::span<const size_t> positions,
     ql::span<std::optional<std::pair<std::string, const char*>>> results,
     const EscapeFunction& escapeFunction) {
@@ -269,7 +270,7 @@ void resolveNonVocabIndexIds(
 template <bool removeQuotesAndAngleBrackets, bool returnOnlyLiterals,
           typename EscapeFunction>
 void resolveVocabIndexIds(
-    const Index& index, ql::span<const Id> ids,
+    const Index& index, ConstIdColumn ids,
     ql::span<const size_t> positions,
     ql::span<std::optional<std::pair<std::string, const char*>>> results,
     const EscapeFunction& escapeFunction) {
@@ -308,7 +309,7 @@ template <bool removeQuotesAndAngleBrackets = false,
           bool returnOnlyLiterals = false,
           typename EscapeFunction = ql::identity>
 std::vector<std::optional<std::pair<std::string, const char*>>>
-idsToStringAndType(const Index& index, ql::span<const Id> ids,
+idsToStringAndType(const Index& index, ConstIdColumn ids,
                    const LocalVocab& localVocab,
                    const EscapeFunction& escapeFunction = EscapeFunction{}) {
   std::vector<std::optional<std::pair<std::string, const char*>>> results(

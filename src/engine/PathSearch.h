@@ -12,6 +12,7 @@
 
 #include "backports/span.h"
 #include "engine/Operation.h"
+#include "engine/idTable/IdColumn.h"
 #include "global/Id.h"
 #include "util/AllocatorWithLimit.h"
 #include "util/VectorWithMemoryLimit.h"
@@ -273,7 +274,7 @@ class PathSearch : public Operation {
 
   std::unique_ptr<Operation> cloneImpl() const override;
 
-  std::pair<ql::span<const Id>, ql::span<const Id>> handleSearchSides() const;
+  std::pair<ConstIdColumn, ConstIdColumn> handleSearchSides() const;
 
   /**
    * @brief Finds paths based on the configured algorithm.
@@ -290,7 +291,7 @@ class PathSearch : public Operation {
    * @return A vector of all paths.
    */
   pathSearch::PathsLimited allPaths(
-      ql::span<const Id> sources, ql::span<const Id> targets,
+      ConstIdColumn sources, ConstIdColumn targets,
       const pathSearch::BinSearchWrapper& binSearch, bool cartesian,
       std::optional<uint64_t> numPathsPerTarget,
       std::optional<uint64_t> maxDepth) const;

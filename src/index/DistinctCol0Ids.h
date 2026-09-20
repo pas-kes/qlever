@@ -20,6 +20,7 @@
 #include <vector>
 
 #include "backports/span.h"
+#include "engine/idTable/IdColumn.h"
 #include "engine/idTable/IdTable.h"
 #include "global/Id.h"
 #include "index/CompressedRelation.h"
@@ -169,7 +170,7 @@ class IdCursor {
 // ascending order.
 class RequestedIdsCursor {
   // The requested IDs that haven't been passed to `advanceTo` yet.
-  std::optional<ql::span<const Id>> remainingIds_;
+  std::optional<ConstIdColumn> remainingIds_;
 
  public:
   explicit RequestedIdsCursor(const std::optional<std::vector<Id>>& ids);

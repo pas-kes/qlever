@@ -13,6 +13,7 @@
 #include <gmock/gmock.h>
 
 #include "engine/IndexScan.h"
+#include "engine/idTable/IdColumn.h"
 #include "index/ExportIds.h"
 #include "index/LocalVocabEntry.h"
 #include "parser/LiteralOrIri.h"
@@ -291,7 +292,7 @@ TEST(ExportIds, idsToStringAndTypeBatchMatchesIndividualLookups) {
   ql::ranges::sort(ids);
 
   auto batchResults = ql::exportIds::idsToStringAndType(
-      index, ql::span<const Id>{ids}, localVocab);
+      index, ConstIdColumn{ids}, localVocab);
 
   ASSERT_EQ(batchResults.size(), ids.size());
   for (size_t i = 0; i < ids.size(); ++i) {
@@ -307,7 +308,7 @@ TEST(ExportIds, idsToStringAndTypeEmptyInput) {
   auto qec = ad_utility::testing::getQec("<s> <p> <o>");
   LocalVocab localVocab{};
   auto result = ql::exportIds::idsToStringAndType(
-      qec->getIndex(), ql::span<const Id>{}, localVocab);
+      qec->getIndex(), ConstIdColumn{}, localVocab);
   EXPECT_TRUE(result.empty());
 }
 
@@ -326,7 +327,7 @@ inline const LocalVocab& emptyLocalVocab() {
 struct VocabResolver {
   template <bool RemoveQuotesAndAngleBrackets, bool returnOnlyLiterals,
             typename EscapeFunction>
-  static void resolve(const Index& index, ql::span<const Id> ids,
+  static void resolve(const Index& index, ConstIdColumn ids,
                       [[maybe_unused]] const LocalVocab& localVocab,
                       ql::span<const size_t> positions, ResolveResult& results,
                       const EscapeFunction& escape) {
@@ -338,7 +339,7 @@ struct VocabResolver {
 struct NonVocabResolver {
   template <bool RemoveQuotesAndAngleBrackets, bool returnOnlyLiterals,
             typename EscapeFunction>
-  static void resolve(const Index& index, ql::span<const Id> ids,
+  static void resolve(const Index& index, ConstIdColumn ids,
                       [[maybe_unused]] const LocalVocab& localVocab,
                       ql::span<const size_t> positions, ResolveResult& results,
                       const EscapeFunction& escape) {
@@ -355,7 +356,7 @@ struct NonVocabResolver {
 template <typename Resolver, typename EscapeFunction = ql::identity>
 struct ResolveOracle {
   const Index& index;
-  ql::span<const Id> ids;
+  ConstIdColumn ids;
   EscapeFunction escape;
   const LocalVocab& localVocab = emptyLocalVocab();
 
@@ -392,12 +393,12 @@ struct ResolveOracle {
 
 // Small factories to hide complexity at the call sites.
 template <typename EscapeFunction>
-auto makeVocabOracle(const Index& index, ql::span<const Id> ids,
+auto makeVocabOracle(const Index& index, ConstIdColumn ids,
                      const EscapeFunction& escape) {
   return ResolveOracle<VocabResolver, EscapeFunction>{index, ids, escape};
 }
 template <typename EscapeFunction>
-auto makeNonVocabOracle(const Index& index, ql::span<const Id> ids,
+auto makeNonVocabOracle(const Index& index, ConstIdColumn ids,
                         const LocalVocab& localVocab,
                         const EscapeFunction& escape) {
   return ResolveOracle<NonVocabResolver, EscapeFunction>{index, ids, escape,
