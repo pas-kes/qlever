@@ -14,8 +14,8 @@
 // switch, and can be re-run afterwards to check the switch didn't regress
 // performance.
 
-#include "../benchmark/infrastructure/Benchmark.h"
-#include "../test/util/AllocatorTestHelpers.h"
+#include "../../test/util/AllocatorTestHelpers.h"
+#include "../infrastructure/Benchmark.h"
 #include "engine/idTable/splitLayout/IdColumnVector.h"
 #include "engine/idTable/splitLayout/IdRef.h"
 #include "global/Id.h"

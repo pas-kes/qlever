@@ -1,0 +1,5 @@
+addAndLinkBenchmark(IdColumnBenchmark engine testUtil)
+
+addAndLinkBenchmark(LambdaReplacementBenchmark engine testUtil)
+
+addAndLinkBenchmark(UndefHandlingBenchmark engine testUtil)
