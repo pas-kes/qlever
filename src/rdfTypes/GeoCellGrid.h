@@ -12,6 +12,7 @@
 
 #include <array>
 #include <cstdint>
+#include <limits>
 #include <string_view>
 #include <utility>
 #include <vector>
@@ -192,12 +193,18 @@ class GeoCellGrid {
   // NOTE: The bounds are computed by addition, not bitwise or: for the
   // largest cell index, `(last + 1) << numPositionBits()` carries into (or
   // past) the marker bit. That is fine because the upper bound is exclusive
-  // and only used in comparisons.
+  // and only used in comparisons. If the payload of the `Id` has 64 bits (split
+  // layout), the exclusive upper bound of the sentinel cell is 2^64 and does
+  // not fit into 64 bits. It is then clamped to the maximum, which excludes
+  // only the single largest vocabulary index.
   std::pair<uint64_t, uint64_t> vocabIndexRangeForCells(CellIndex first,
                                                         CellIndex last) const {
     AD_CONTRACT_CHECK(first <= last && last <= sentinelCell());
-    return {geoVocabMarkerBit + (first << numPositionBits()),
-            geoVocabMarkerBit + ((last + 1) << numPositionBits())};
+    uint64_t upper = geoVocabMarkerBit + ((last + 1) << numPositionBits());
+    if (upper < geoVocabMarkerBit) {
+      upper = std::numeric_limits<uint64_t>::max();
+    }
+    return {geoVocabMarkerBit + (first << numPositionBits()), upper};
   }
 
   QL_DEFINE_DEFAULTED_EQUALITY_OPERATOR_LOCAL(GeoCellGrid, level_, scheme_)
