@@ -162,14 +162,8 @@ TEST(GeoCellGrid, vocabIndexRangeForCells) {
   auto [sLower, sUpper] =
       grid.vocabIndexRangeForCells(grid.sentinelCell(), grid.sentinelCell());
   EXPECT_GT(sUpper, sLower);
-  if constexpr (ValueId::numDataBits == 64) {
-    // The exclusive bound is 2^64 and is clamped to the maximum.
-    EXPECT_EQ(sUpper, std::numeric_limits<uint64_t>::max());
-  } else {
-    EXPECT_EQ(sUpper,
-              GeoCellGrid::geoVocabMarkerBit +
-                  ((grid.sentinelCell() + 1) << grid.numPositionBits()));
-  }
+  EXPECT_EQ(sUpper, GeoCellGrid::geoVocabMarkerBit +
+                        ((grid.sentinelCell() + 1) << grid.numPositionBits()));
 
   // The range must be ascending and end at the sentinel cell at the latest.
   EXPECT_ANY_THROW(grid.vocabIndexRangeForCells(5, 3));

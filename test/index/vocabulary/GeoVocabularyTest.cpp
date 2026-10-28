@@ -537,11 +537,8 @@ TYPED_TEST(GeoVocabularyUnderlyingVocabTypedTest, GeoCellGridIndices) {
   // The finest grid leaves only two position bits, so the fourth word does
   // not fit anymore (one position stays free for the past-the-end index).
   {
-    // The level of the grid that leaves exactly two position bits (28 for the
-    // 60 data bits of the legacy `Id`, 30 for the 64 bits of the split `Id`).
-    constexpr uint8_t finestLevel = (ValueId::numDataBits - 4) / 2;
     GV fullVocab;
-    fullVocab.setGeoCellGrid(GeoCellGrid{finestLevel});
+    fullVocab.setGeoCellGrid(GeoCellGrid{28});
     auto ww = fullVocab.makeDiskWriterPtr(fn + ".full");
     ww->readableName() = "test";
     for (size_t i = 0; i < 3; ++i) {
