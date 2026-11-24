@@ -21,8 +21,12 @@
 #include <string>
 
 #include "CompilationInfo.h"
+#include "engine/idTable/splitLayout/SplitLayoutId.h"
 #include "global/RuntimeParameters.h"
+#include "index/ConstantsIndexBuilding.h"
+#include "index/IndexConverterBase.h"
 #include "index/IndexFormatConverter.h"
+#include "index/SplitLayoutIdConverter.h"
 #include "util/Forward.h"
 #include "util/GlobalExecutor.h"
 #include "util/KernelBugWorkaround.h"
@@ -30,6 +34,10 @@
 #include "util/ProgramOptionsHelpers.h"
 
 namespace po = boost::program_options;
+
+// Whether this binary has the split layout of the `Id` (`USE_SPLIT_LAYOUT`).
+constexpr bool idHasSplitLayout =
+    std::is_same_v<Id, columnBasedIdTable::splitLayout::SplitLayoutId>;
 
 // _____________________________________________________________________________
 int main(int argc, char** argv) {
@@ -43,10 +51,17 @@ int main(int argc, char** argv) {
   // The overview message of the help states which index formats this upgrader
   // converts between, what the difference between them is, and how the upgrade
   // proceeds (staged in a subdirectory, swapped into place after a check).
-  po::options_description boostOptions{
-      absl::StrCat("Usage: qlever-upgrade-index <index-basename>\n\n",
-                   qlever::indexFormatConverter::conversionDescription(),
-                   "\n\nOptions for qlever-upgrade-index")};
+  po::options_description boostOptions{absl::StrCat(
+      "Usage: qlever-upgrade-index <index-basename>\n\n",
+      qlever::indexFormatConverter::conversionDescription(),
+      idHasSplitLayout
+          ? absl::StrCat(
+                "\n\nAn index with the folded layout of the IDs "
+                "is converted to the split layout of this binary "
+                "instead: ",
+                qlever::splitLayoutIdConverter::conversionDescription())
+          : "",
+      "\n\nOptions for qlever-upgrade-index")};
   auto add = [&boostOptions](auto&&... args) {
     boostOptions.add_options()(AD_FWD(args)...);
   };
@@ -88,6 +103,16 @@ int main(int argc, char** argv) {
               << qlever::version::GitShortHash << EMPH_OFF << std::endl;
 
   try {
+    // An index with the folded layout is converted to the split layout of this
+    // binary, see `index/SplitLayoutIdConverter.h`.
+    if constexpr (idHasSplitLayout) {
+      if (!qlever::indexConverterBase::readConfiguration(indexBasename)
+               .contains(std::string{SPLIT_ID_LAYOUT_KEY})) {
+        qlever::splitLayoutIdConverter::upgradeIndexInPlace(
+            indexBasename, ad_utility::globalExecutor());
+        return EXIT_SUCCESS;
+      }
+    }
     qlever::indexFormatConverter::upgradeIndexInPlace(
         indexBasename, ad_utility::globalExecutor());
   } catch (const std::exception& e) {

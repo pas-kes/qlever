@@ -263,6 +263,9 @@ class EncodedIriManagerImpl {
         detail::patternsFromJson(j, NumBitsEncoding, maxNumPrefixes_);
   }
 
+  // The patterns of the encoded IRIs, in the order of their tags.
+  const std::vector<encodedIri::Pattern>& patterns() const { return patterns_; }
+
   // Hash support for use in `TestIndexConfig`.
   template <typename H>
   friend H AbslHashValue(H h, const EncodedIriManagerImpl& manager) {

@@ -104,6 +104,11 @@ class IndexMetaData {
   void readFromFile(ad_utility::File& permutationFile,
                     ad_utility::File& metaFile);
 
+  // Return the serialized per-block metadata from the end of `permutationFile`
+  // (see `appendToFile`), which `readFromFile` deserializes.
+  static std::vector<char> readSerializedBlockMetaData(
+      ad_utility::File& permutationFile);
+
   // Calculate and save statistics that are expensive to calculate so we only
   // have to do this once during the index build and not at server start.
   void calculateStatistics(size_t numDistinctCol0);

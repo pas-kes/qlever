@@ -21,7 +21,11 @@
 // The conversion of an index from the previous on-disk format to the current
 // one, see `convertIndexToCurrentFormat` below. This is what the standalone
 // `qlever-upgrade-index` executable (see `src/IndexUpgraderMain.cpp`) does;
-// nothing else in QLever uses it.
+// nothing else in QLever uses it. It reads and writes with the readers and
+// writers of this binary, so it upgrades an index with the layout of the `Id`
+// of this binary. An index with the folded layout is converted to the split
+// layout by `index/SplitLayoutIdConverter.h`. The steps that both converters
+// share are in `index/IndexConverterBase.h`.
 namespace qlever::indexFormatConverter {
 
 // The index format that this converter converts from, and the index format that

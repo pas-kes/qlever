@@ -64,16 +64,19 @@ void IndexMetaData::readFromFile(ad_utility::File& permutationFile,
                                  ad_utility::File& metaFile) {
   // Read the per-relation metadata from its own file.
   data_.readFromFile(metaFile);
-  // Read the per-block metadata from the end of the permutation file.
+  ad_utility::serialization::ByteBufferReadSerializer serializer{
+      readSerializedBlockMetaData(permutationFile)};
+  serializer >> *this;
+}
+
+// _________________________________________________________________________
+std::vector<char> IndexMetaData::readSerializedBlockMetaData(
+    ad_utility::File& permutationFile) {
   auto [endOfMeta, startOfMeta] = permutationFile.getLastOffset();
   std::vector<char> buf(endOfMeta - startOfMeta);
   permutationFile.read(buf.data(), static_cast<size_t>(endOfMeta - startOfMeta),
                        startOfMeta);
-
-  ad_utility::serialization::ByteBufferReadSerializer serializer{
-      std::move(buf)};
-
-  serializer >> *this;
+  return buf;
 }
 
 // _____________________________________________________________________________

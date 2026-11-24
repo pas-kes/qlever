@@ -31,7 +31,7 @@ add_library(index
         PatternCreator.cpp ScanSpecification.cpp
         DeltaTriples.cpp TextScoring.cpp TextScoringEnum.cpp TextIndexReadWrite.cpp
         TextIndexBuilder.cpp GraphFilter.cpp IndexRebuilder.cpp GraphNameManager.cpp
-        IndexFormatConverter.cpp IndexSwap.cpp
+        IndexFormatConverter.cpp IndexConverterBase.cpp FoldedIndexReader.cpp SplitLayoutIdConverter.cpp IndexSwap.cpp
         IdTableUtils.cpp ExportIds.cpp LocalVocabContextImpl.cpp
         CompressedExternalIdTableSorterInstantiations.cpp
         InputFileSpecification.cpp

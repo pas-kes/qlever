@@ -10,11 +10,14 @@ addLinkAndDiscoverTestNoLibs(EncodedIriManagerTest vocabulary)
 addLinkAndDiscoverTestNoLibs(EncodedIriPatternTest vocabulary)
 addLinkAndDiscoverTestNoLibs(NibbleEncodingTest vocabulary)
 addLinkAndDiscoverTest(GraphNameManagerTest index)
-# TODO<pas-kes>: Implement new IndexFormatConverter
-# The converter reads the packed 64-bit `Id`s of the legacy index format, so its
-# test is only meaningful for the legacy `ValueId`.
+# The steps that both index converters share, in both layouts.
+addLinkAndDiscoverTest(IndexConverterBaseTest index engine)
+# The converter that `qlever-upgrade-index` uses depends on the layout of the
+# `Id` (see `src/IndexUpgraderMain.cpp`), so only its test is built.
 if (NOT USE_SPLIT_LAYOUT)
     addLinkAndDiscoverTest(IndexFormatConverterTest index engine)
+else ()
+    addLinkAndDiscoverTest(SplitLayoutIdConverterTest index engine)
 endif ()
 # Emscripten tests cannot access the host filesystem, so embed the test data.
 if (EMSCRIPTEN AND NOT USE_SPLIT_LAYOUT)

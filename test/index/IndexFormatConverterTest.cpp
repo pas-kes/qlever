@@ -21,7 +21,6 @@
 #include "engine/MaterializedViews.h"
 #include "global/Constants.h"
 #include "global/Id.h"
-#include "global/MaterializedViewConstants.h"
 #include "index/ConstantsIndexBuilding.h"
 #include "index/ExportIds.h"
 #include "index/Index.h"
@@ -382,19 +381,9 @@ TEST_F(IndexFormatConverterTest, convertedMaterializedView) {
 }
 
 // _____________________________________________________________________________
-// The in-place upgrade stages the upgraded index in an
-// `index-in-new-format.<datetime>.tmp` subdirectory, checks it, and only then
-// retires the index in the old format to `index-in-old-format.<datetime of
-// its build>` and moves the upgraded index to the base name of the old one.
+// How the upgrade is staged and moved into place is tested in
+// `IndexConverterBaseTest.cpp`.
 TEST_F(IndexFormatConverterTest, upgradeIndexInPlace) {
-  // Remember the files of the index in the old format for the retirement
-  // check below.
-  fs::path oldDirectory = fs::path{oldBasename_}.parent_path();
-  std::vector<std::string> filesBefore;
-  for (const auto& entry : fs::directory_iterator{oldDirectory}) {
-    filesBefore.push_back(entry.path().filename().string());
-  }
-
   upgradeIndexInPlace(oldBasename_, executor());
 
   // The upgraded index is at the base name the old index lived at, is in the
@@ -412,21 +401,6 @@ TEST_F(IndexFormatConverterTest, upgradeIndexInPlace) {
   EXPECT_EQ(scanAllTriples(index, Permutation::SPO, locatedTriples).size(),
             expectedTriples().size());
 
-  // The index in the old format was retired to
-  // `index-in-old-format.<datetime>` with all of its files, and the staging
-  // directory was removed again.
-  auto retiredDirs = qlever::util::directoriesWithPrefix(
-      oldDirectory, std::string{retiredDirPrefix});
-  ASSERT_EQ(retiredDirs.size(), 1u);
-  std::vector<std::string> retiredFiles;
-  for (const auto& entry : fs::directory_iterator{retiredDirs.front()}) {
-    retiredFiles.push_back(entry.path().filename().string());
-  }
-  EXPECT_THAT(retiredFiles, ::testing::UnorderedElementsAreArray(filesBefore));
-  EXPECT_TRUE(qlever::util::directoriesWithPrefix(oldDirectory,
-                                                  std::string{stagingDirPrefix})
-                  .empty());
-
   // A second upgrade refuses, because the index already is in the current
   // format.
   AD_EXPECT_THROW_WITH_MESSAGE(
@@ -442,121 +416,21 @@ TEST_F(IndexFormatConverterTest, refusesToConvertIndexTwice) {
       convertIndexToCurrentFormat(newBasename_, (directory_ / "again").string(),
                                   executor()),
       HasSubstr("already is in an index format that the current version"));
-  // The files of the converted index must not be overwritten.
-  AD_EXPECT_THROW_WITH_MESSAGE(
-      convertIndexToCurrentFormat(oldBasename_, newBasename_, executor()),
-      HasSubstr("must not overwrite"));
 }
 
 // _____________________________________________________________________________
 TEST_F(IndexFormatConverterTest, refusesToConvertUnsuitableIndexes) {
-  // The base names have to differ, else the conversion would overwrite the
-  // index that it reads.
-  AD_EXPECT_THROW_WITH_MESSAGE(
-      convertIndexToCurrentFormat(oldBasename_, oldBasename_, executor()),
-      HasSubstr("has to differ"));
-
-  // An index that does not exist at all.
-  AD_EXPECT_THROW_WITH_MESSAGE(
-      convertIndexToCurrentFormat((directory_ / "doesNotExist").string(),
-                                  newBasename_, executor()),
-      HasSubstr("is not the base name of a QLever index"));
-
   // An index with an index format that is neither the previous nor the current
   // one.
   std::string configurationFilename =
       absl::StrCat(oldBasename_, CONFIGURATION_FILE);
   nlohmann::json configuration;
   ad_utility::makeIfstream(configurationFilename) >> configuration;
-  auto restoreConfiguration = [&configurationFilename, configuration]() {
-    ad_utility::makeOfstream(configurationFilename) << configuration.dump();
-  };
-  {
-    auto modifiedConfiguration = configuration;
-    modifiedConfiguration["index-format-version"]["pull-request-number"] = 1;
-    ad_utility::makeOfstream(configurationFilename)
-        << modifiedConfiguration.dump();
-    AD_EXPECT_THROW_WITH_MESSAGE(
-        convertIndexToCurrentFormat(oldBasename_, newBasename_, executor()),
-        HasSubstr("Please rebuild the index"));
-  }
-  {
-    auto modifiedConfiguration = configuration;
-    modifiedConfiguration.erase("index-format-version");
-    ad_utility::makeOfstream(configurationFilename)
-        << modifiedConfiguration.dump();
-    AD_EXPECT_THROW_WITH_MESSAGE(
-        convertIndexToCurrentFormat(oldBasename_, newBasename_, executor()),
-        HasSubstr("before versioning was introduced"));
-  }
-  restoreConfiguration();
-
-  // An index with persisted updates, which contain `Id`s that this converter
-  // deliberately does not convert.
-  std::string updatesFilename =
-      absl::StrCat(oldBasename_, UPDATE_TRIPLES_SUFFIX);
-  ad_utility::makeOfstream(updatesFilename) << "irrelevant content";
+  configuration["index-format-version"]["pull-request-number"] = 1;
+  ad_utility::makeOfstream(configurationFilename) << configuration.dump();
   AD_EXPECT_THROW_WITH_MESSAGE(
       convertIndexToCurrentFormat(oldBasename_, newBasename_, executor()),
-      HasSubstr("has persisted updates"));
-  ad_utility::deleteFile(updatesFilename);
-
-  // An index that has only one of the two permutations of a pair.
-  ad_utility::deleteFile(absl::StrCat(oldBasename_, ".index.sop"));
-  AD_EXPECT_THROW_WITH_MESSAGE(
-      convertIndexToCurrentFormat(oldBasename_, newBasename_, executor()),
-      HasSubstr("has only one of the permutations"));
-}
-
-// _____________________________________________________________________________
-TEST_F(IndexFormatConverterTest, refusesToConvertUnsuitableMaterializedViews) {
-  std::string viewBasename =
-      materializedViewFilenameBase(oldBasename_, "testview");
-
-  // A view that is not in the format version that belongs to the source format
-  // of the converter.
-  std::string viewInfoFilename = absl::StrCat(viewBasename, VIEW_INFO_SUFFIX);
-  nlohmann::json viewInfo;
-  ad_utility::makeIfstream(viewInfoFilename) >> viewInfo;
-  auto originalViewInfo = viewInfo;
-  viewInfo["version"] = MATERIALIZED_VIEWS_VERSION;
-  ad_utility::makeOfstream(viewInfoFilename) << viewInfo.dump();
-  AD_EXPECT_THROW_WITH_MESSAGE(
-      convertIndexToCurrentFormat(oldBasename_, newBasename_, executor()),
-      HasSubstr("only converts views in the format version 1"));
-  ad_utility::makeOfstream(viewInfoFilename) << originalViewInfo.dump();
-
-  // A view of which only some of its files exist. Note that the file that is
-  // deleted here must not be the info file, because the views are enumerated by
-  // exactly those files.
-  ad_utility::deleteFile(absl::StrCat(viewBasename, VIEW_SPO_SUFFIX));
-  AD_EXPECT_THROW_WITH_MESSAGE(
-      convertIndexToCurrentFormat(
-          oldBasename_, (directory_ / "incompleteView").string(), executor()),
-      HasSubstr("files that belong to a materialized view"));
-}
-
-// _____________________________________________________________________________
-TEST_F(IndexFormatConverterTest, emptyBasenamesAreARequirementViolation) {
-  AD_EXPECT_THROW_WITH_MESSAGE(
-      convertIndexToCurrentFormat("", newBasename_, executor()),
-      HasSubstr("must not be empty"));
-  AD_EXPECT_THROW_WITH_MESSAGE(
-      convertIndexToCurrentFormat(oldBasename_, "", executor()),
-      HasSubstr("must not be empty"));
-}
-
-// _____________________________________________________________________________
-TEST_F(IndexFormatConverterTest, equalBasenamesAreAUserFacingError) {
-  // The comparison normalizes the paths, so also a spelled-differently base
-  // name of the same index is caught.
-  AD_EXPECT_THROW_WITH_MESSAGE(
-      convertIndexToCurrentFormat(oldBasename_, oldBasename_, executor()),
-      HasSubstr("has to differ from the base name"));
-  AD_EXPECT_THROW_WITH_MESSAGE(
-      convertIndexToCurrentFormat(oldBasename_,
-                                  absl::StrCat("./", oldBasename_), executor()),
-      HasSubstr("has to differ from the base name"));
+      HasSubstr("Please rebuild the index"));
 }
 
 // A fixture for the conversion of indexes with properties that the checked-in
